@@ -42,13 +42,14 @@ export default function ExpenseScreen() {
     }
 
     await db.runAsync(
-      'INSERT INTO expenses (amount, category, note) VALUES (?, ?, ?);',
-      [amountNumber, trimmedCategory, trimmedNote || null]
+      'INSERT INTO expenses (amount, category, note) VALUES (?, ?, ?, ?);',
+      [amountNumber, trimmedCategory, trimmedNote || null, currentDate]
     );
 
     setAmount('');
     setCategory('');
     setNote('');
+    setDate('');
 
     loadExpenses();
   };
@@ -81,7 +82,8 @@ export default function ExpenseScreen() {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           amount REAL NOT NULL,
           category TEXT NOT NULL,
-          note TEXT
+          note TEXT,
+          date TEXT NOT NULL
         );
       `);
 
@@ -175,6 +177,10 @@ const styles = StyleSheet.create({
     color: '#e5e7eb',
   },
   expenseNote: {
+    fontSize: 12,
+    color: '#9ca3af',
+  },
+  expenseDate: {
     fontSize: 12,
     color: '#9ca3af',
   },

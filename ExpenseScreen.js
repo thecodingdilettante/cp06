@@ -126,6 +126,28 @@ const loadExpenses = async () => {
     setup();
   }, [filter]);
 
+  const filteredExpenses = expenses.filter((exp) => {
+    if (filter === 'all') return true;
+    if (filter === 'week') return weekStart;
+    if (filter === 'month') return monthStart;
+    return true;
+  });
+
+  const totalSpending = filteredExpenses.reduce((sum, exp) => {
+    return sum + (Number(exp.amount) || 0);
+  }, 0);
+  const currentFilterLabel =
+    filter === 'all' ? 'All' : filter === 'week' ? 'This Week' : 'This Month';
+
+    const categoryTotalsMap = filteredExpenses.reduce((acc, exp) => {
+    const key = exp.category || 'Uncategorized';
+    const amt = Number(exp.amount) || 0;
+    acc[key] = (acc[key] || 0) + amt;
+    return acc;
+  }, {});
+
+  const categoryTotals = Object.entries(categoryTotalsMap);
+
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.heading}>Student Expense Tracker</Text>
@@ -141,6 +163,23 @@ const loadExpenses = async () => {
           <Text style={filter === "month" ? styles.activeFilter : styles.filter}>This Month</Text>
         </TouchableOpacity>
       </View>
+
+      <Text style={styles.totalText}>
+          Total Spending ({currentFilterLabel}): ${totalSpending.toFixed(2)}
+      </Text>
+
+      {categoryTotals.length > 0 && (
+        <View style={styles.categoryTotals}>
+          <Text style={styles.categoryTotalsHeader}>
+            By Category ({currentFilterLabel}):
+          </Text>
+          {categoryTotals.map(([cat, total]) => (
+            <Text key={cat} style={styles.categoryTotalsSection}>
+              {cat}: ${total.toFixed(2)}
+            </Text>
+          ))}
+        </View>
+      )}
 
       <View style={styles.form}>
         <TextInput
@@ -241,6 +280,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6b7280',
     marginTop: 4,
+  },
+  totalText: {
+    color: '#e5e7eb',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+    textAlign: 'right',
+  },
+  
+  categoryTotals: {
+    marginBottom: 12,
+  },
+  categoryTotalsHeader: {
+    color: '#e5e7eb',
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  categoryTotalsSection: {
+    color: '#9ca3af',
+    fontSize: 12,
   },
   delete: {
     color: '#f87171',

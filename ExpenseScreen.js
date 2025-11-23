@@ -18,48 +18,73 @@ export default function ExpenseScreen() {
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [note, setNote] = useState('');
+  const [filter, setFilter] = useState("all");
 
-  const loadExpenses = async () => {
-    const rows = await db.getAllAsync(
-      'SELECT * FROM expenses ORDER BY id DESC;'
-    );
+const loadExpenses = async () => {
+  const rows = await db.getAllAsync(
+    'SELECT * FROM expenses ORDER BY id DESC;'
+  );
+
+  if (filter === "all") {
     setExpenses(rows);
-  };
+    return;
+  }
+  const today = new Date();
+  let startDate = null;
+
+  if (filter === "week") {
+    const weekStart = new Date(now);
+    const currentDay = today.getDay();
+    weekStart.setDate(now.getDate() - currentDay);
+    startDate = weekStart;
+  }
+
+  if (filter === "month") {
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    startDate = monthStart;
+  }
+
+  const filtered = rows.filter((e) => {
+    if (!e.date) return true;
+
+    const d = new Date(e.date);
+    if (isNaN(d)) return false; 
+
+    return d >= startDate && d <= now;
+  });
+
+  setExpenses(filtered);
+};
+
+
   const addExpense = async () => {
     const amountNumber = parseFloat(amount);
-
-    if (isNaN(amountNumber) || amountNumber <= 0) {
-      // Basic validation: ignore invalid or non-positive amounts
-      return;
-    }
+    if (isNaN(amountNumber) || amountNumber <= 0) return;
 
     const trimmedCategory = category.trim();
     const trimmedNote = note.trim();
+    if (!trimmedCategory) return;
 
-    if (!trimmedCategory) {
-      // Category is required
-      return;
-    }
+    const currentDate = new Date().toISOString();
 
     await db.runAsync(
-      'INSERT INTO expenses (amount, category, note) VALUES (?, ?, ?, ?);',
-      [amountNumber, trimmedCategory, trimmedNote || null, currentDate]
-    );
+    'INSERT INTO expenses (amount, category, note, date) VALUES (?, ?, ?, ?);',
+    [amountNumber, trimmedCategory, trimmedNote || null, currentDate]
+  );
+
+
 
     setAmount('');
     setCategory('');
     setNote('');
-    setDate('');
 
     loadExpenses();
   };
-
 
   const deleteExpense = async (id) => {
     await db.runAsync('DELETE FROM expenses WHERE id = ?;', [id]);
     loadExpenses();
   };
-
 
   const renderExpense = ({ item }) => (
     <View style={styles.expenseRow}>
@@ -67,6 +92,7 @@ export default function ExpenseScreen() {
         <Text style={styles.expenseAmount}>${Number(item.amount).toFixed(2)}</Text>
         <Text style={styles.expenseCategory}>{item.category}</Text>
         {item.note ? <Text style={styles.expenseNote}>{item.note}</Text> : null}
+        <Text style={styles.expenseDate}>{new Date(item.date).toLocaleDateString()}</Text>
       </View>
 
       <TouchableOpacity onPress={() => deleteExpense(item.id)}>
@@ -77,25 +103,44 @@ export default function ExpenseScreen() {
 
   useEffect(() => {
     async function setup() {
-      await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS expenses (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          amount REAL NOT NULL,
-          category TEXT NOT NULL,
-          note TEXT,
-          date TEXT NOT NULL
-        );
-      `);
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS expenses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      amount REAL NOT NULL,
+      category TEXT NOT NULL,
+      note TEXT,
+      date TEXT NOT NULL
+    );
+  `);
 
-      await loadExpenses();
-    }
+  try {
+    await db.execAsync(`
+      ALTER TABLE expenses ADD COLUMN date TEXT;
+    `);
+  } catch (e) {
+  }
+
+  await loadExpenses();
+}
 
     setup();
-  }, []);
+  }, [filter]);
 
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.heading}>Student Expense Tracker</Text>
+
+      <View style={styles.filterBar}>
+        <TouchableOpacity onPress={() => setFilter("all")}>
+          <Text style={filter === "all" ? styles.activeFilter : styles.filter}>All</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setFilter("week")}>
+          <Text style={filter === "week" ? styles.activeFilter : styles.filter}>This Week</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setFilter("month")}>
+          <Text style={filter === "month" ? styles.activeFilter : styles.filter}>This Month</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.form}>
         <TextInput
@@ -127,9 +172,7 @@ export default function ExpenseScreen() {
         data={expenses}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderExpense}
-        ListEmptyComponent={
-          <Text style={styles.empty}>No expenses yet.</Text>
-        }
+        ListEmptyComponent={<Text style={styles.empty}>No expenses yet.</Text>}
       />
 
       <Text style={styles.footer}>
@@ -146,6 +189,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     marginBottom: 16,
+  },
+  filterBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+  },
+  filter: {
+    color: '#9ca3af',
+    fontSize: 16,
+  },
+  activeFilter: {
+    color: '#fbbf24',
+    fontSize: 16,
+    fontWeight: '700',
   },
   form: {
     marginBottom: 16,
@@ -182,7 +239,8 @@ const styles = StyleSheet.create({
   },
   expenseDate: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: '#6b7280',
+    marginTop: 4,
   },
   delete: {
     color: '#f87171',

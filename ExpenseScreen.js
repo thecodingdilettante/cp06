@@ -19,6 +19,10 @@ export default function ExpenseScreen() {
   const [category, setCategory] = useState('');
   const [note, setNote] = useState('');
   const [filter, setFilter] = useState("all");
+  const [editing, setEditing] = useState(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editNote, setEditNote] = useState("");
 
 const loadExpenses = async () => {
   const rows = await db.getAllAsync(
@@ -162,6 +166,16 @@ const loadExpenses = async () => {
         <TouchableOpacity onPress={() => setFilter("month")}>
           <Text style={filter === "month" ? styles.activeFilter : styles.filter}>This Month</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+        onPress={() => {
+          setEditing(item.id);
+          setEditAmount(String(item.amount));
+          setEditCategory(item.category);
+          setEditNote(item.note || "");
+        }}
+      >
+        <Text style={{ color: "#9ca3af", marginRight: 12 }}>Edit</Text>
+      </TouchableOpacity>
       </View>
 
       <Text style={styles.totalText}>
